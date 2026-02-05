@@ -18,3 +18,5 @@ backend/accountbook-server
 
 # Docker
 docker-compose.override.yml
+
+.claude
