@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  # GoLang 後端 API 服務
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: accountbook_backend
+    restart: unless-stopped
+    # 暴露端口供 Cloudflared Tunnel 路由 /api/ 請求
+    ports:
+      - "8003:8080"
+    environment:
+      - DB_PATH=/app/data/accountbook.db
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_WEBHOOK_URL=${TELEGRAM_WEBHOOK_URL}
+      - GIN_MODE=release
+      - TZ=Asia/Taipei
+    volumes:
+      - ./data:/app/data
+    networks:
+      - accountbook-network
+
+  # PHP 前端網頁服務
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: accountbook_frontend
+    restart: unless-stopped
+    ports:
+      - "8002:80"
+    environment:
+      - TZ=Asia/Taipei
+    depends_on:
+      - backend
+    networks:
+      - accountbook-network
+
+networks:
+  accountbook-network:
+    driver: bridge
