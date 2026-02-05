@@ -83,13 +83,17 @@ func handleMessage(msg *TelegramMessage) {
 		services.SendMessage(chatID, FormatAccounts())
 		return
 
+	case text == "/new" || text == "/記帳":
+		startNewRecord(chatID)
+		return
+
 	case text == "/cancel" || text == "/取消":
 		DeleteSession(chatID)
 		services.SendMessage(chatID, "已取消")
 		return
 
 	case strings.HasPrefix(text, "/"):
-		services.SendMessage(chatID, "未知指令，可用指令：/start、/查詢帳戶、/查詢分類")
+		services.SendMessage(chatID, "未知指令，可用指令：/start、/new、/查詢帳戶、/查詢分類")
 		return
 	}
 
@@ -150,6 +154,12 @@ func handleFieldInput(chatID int64, userMsgID int, session *Session, text string
 
 	// 回到預覽狀態，更新預覽訊息
 	session.State = StatePreview
+
+	// 刪除「請輸入XXX：」提示訊息（原因：使用者已完成輸入，提示不再需要）
+	if session.PromptMsgID > 0 {
+		services.DeleteMessage(chatID, session.PromptMsgID)
+		session.PromptMsgID = 0
+	}
 
 	// 刪除使用者的輸入訊息，保持聊天室整潔
 	services.DeleteMessage(chatID, userMsgID)
@@ -232,17 +242,17 @@ func handleCallbackQuery(cq *TelegramCallbackQuery) {
 		session.State = StatePreview
 		updatePreview(chatID, session)
 
-	// 編輯金額：等待使用者輸入
+	// 編輯金額：發送提示訊息，等待使用者輸入
 	case data == "edit_amount":
 		session.State = StateEditAmt
-		services.EditMessageWithKeyboard(chatID, session.MessageID,
-			"💰 請輸入金額：", services.InlineKeyboardMarkup{})
+		promptID, _ := services.SendMessageReturningID(chatID, "💰 請輸入金額：")
+		session.PromptMsgID = promptID
 
-	// 編輯項目：等待使用者輸入
+	// 編輯項目：發送提示訊息，等待使用者輸入
 	case data == "edit_item":
 		session.State = StateEditItem
-		services.EditMessageWithKeyboard(chatID, session.MessageID,
-			"📝 請輸入項目名稱：", services.InlineKeyboardMarkup{})
+		promptID, _ := services.SendMessageReturningID(chatID, "📝 請輸入項目名稱：")
+		session.PromptMsgID = promptID
 
 	// 編輯分類：顯示分類選擇鍵盤
 	case data == "edit_category":
@@ -258,11 +268,11 @@ func handleCallbackQuery(cq *TelegramCallbackQuery) {
 		session.State = StatePreview
 		updatePreview(chatID, session)
 
-	// 編輯備註：等待使用者輸入
+	// 編輯備註：發送提示訊息，等待使用者輸入
 	case data == "edit_note":
 		session.State = StateEditNote
-		services.EditMessageWithKeyboard(chatID, session.MessageID,
-			"📌 請輸入備註（輸入「無」可清除）：", services.InlineKeyboardMarkup{})
+		promptID, _ := services.SendMessageReturningID(chatID, "📌 請輸入備註（輸入「無」可清除）：")
+		session.PromptMsgID = promptID
 
 	// 確認送出
 	case data == "confirm":

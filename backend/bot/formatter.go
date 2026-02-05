@@ -244,13 +244,15 @@ func FormatAccounts() string {
 func FormatUsage() string {
 	return `📋 記帳機器人使用說明
 
-直接輸入任何文字即可開始新增紀錄
+輸入 /new 即可開始新增紀錄
 所有欄位都已預設好，只需修改需要的項目
 
 指令列表：
+/new - 開始記帳
 /start - 顯示此說明
 /查詢分類 - 查看所有分類
-/查詢帳戶 - 查看所有帳戶餘額`
+/查詢帳戶 - 查看所有帳戶餘額
+/cancel - 取消目前操作`
 }
 
 // FormatError 格式化錯誤訊息（保留給多行格式解析失敗時使用）

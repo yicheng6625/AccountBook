@@ -21,16 +21,17 @@ const (
 
 // Session 單一使用者的會話狀態
 type Session struct {
-	State      SessionState
-	Date       string  // 日期
-	AccountID  int     // 帳戶 ID
-	Type       string  // 收入/支出
-	Amount     float64 // 金額
-	Item       string  // 項目名稱
-	CategoryID int     // 分類 ID
-	Note       string  // 備註
-	MessageID  int     // 上一則預覽訊息的 ID（用於編輯訊息）
-	UpdatedAt  time.Time
+	State       SessionState
+	Date        string  // 日期
+	AccountID   int     // 帳戶 ID
+	Type        string  // 收入/支出
+	Amount      float64 // 金額
+	Item        string  // 項目名稱
+	CategoryID  int     // 分類 ID
+	Note        string  // 備註
+	MessageID   int     // 上一則預覽訊息的 ID（用於編輯訊息）
+	PromptMsgID int     // 「請輸入XXX：」提示訊息的 ID（原因：使用者輸入後需一併刪除）
+	UpdatedAt   time.Time
 }
 
 // sessionStore 全域會話儲存（以 chatID 為 key）

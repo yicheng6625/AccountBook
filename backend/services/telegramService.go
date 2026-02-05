@@ -63,6 +63,26 @@ func SendMessage(chatID int64, text string) error {
 	return nil
 }
 
+// SendMessageReturningID 發送純文字訊息並回傳訊息 ID
+// 原因：發送提示訊息（如「請輸入金額：」）後需記錄 ID，使用者輸入後一併刪除
+func SendMessageReturningID(chatID int64, text string) (int, error) {
+	url := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", TelegramToken)
+	body, _ := json.Marshal(map[string]interface{}{
+		"chat_id": chatID,
+		"text":    text,
+	})
+
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		return 0, fmt.Errorf("發送訊息失敗: %v", err)
+	}
+	defer resp.Body.Close()
+
+	var result SendMessageResponse
+	json.NewDecoder(resp.Body).Decode(&result)
+	return result.Result.MessageID, nil
+}
+
 // SendMessageResponse sendMessage 的回應結構
 // 原因：需要取得送出的訊息 ID，後續用於 editMessageText
 type SendMessageResponse struct {
