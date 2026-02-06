@@ -42,7 +42,9 @@ cd "$PROJECT_DIR"
 # 停止舊容器、重新建置並啟動
 echo ">>> 重新建置並啟動 Docker 容器..."
 # docker compose down
-docker compose up -d --build
+# 先手動把程式碼包進新的鏡像，但強制使用本地現有的基礎鏡像
+docker compose build --pull=false
+docker compose up -d
 
 # 清理舊映像
 echo ">>> 清理未使用的 Docker 映像..."
