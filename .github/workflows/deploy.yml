@@ -27,4 +27,4 @@ jobs:
 
       - name: Deploy AccountBook
         run: |
-          /Users/steven/Documents/GitHub/1_AccountBook/deploy_accountbook.sh
+          /Users/steven/Documents/GitHub/1_AccountBook/build.sh
