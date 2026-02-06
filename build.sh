@@ -2,7 +2,7 @@
 # 建置腳本：本機編譯後端二進位檔
 # 用法：在專案根目錄執行 ./build.sh，然後再 docker compose up -d --build
 
-set -e
+# set -e
 
 echo "=== 開始編譯後端 ==="
 
