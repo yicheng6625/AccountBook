@@ -37,7 +37,7 @@ go build -o accountbook-server .
 chmod +x accountbook-server
 
 # 回到專案根目錄
-cd "$PROJECT_DIR"
+# cd "$PROJECT_DIR"
 
 # 停止舊容器、重新建置並啟動
 echo ">>> 重新建置並啟動 Docker 容器..."
