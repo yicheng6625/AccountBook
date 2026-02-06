@@ -1,6 +1,6 @@
 # GitHub Actions CI/CD 部署流程
 # 原因：推送到 main 時自動在 Mac mini 上部署
-# 測試 CICD v3
+# 測試 CICD v5
 
 name: Deploy to Mac mini
 
