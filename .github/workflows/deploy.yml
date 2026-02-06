@@ -25,6 +25,10 @@ jobs:
           docker version
           docker compose version
 
+      - name: Unlock Keychain
+        run: |
+          security unlock-keychain -p "${{ secrets.MAC_PASSWORD }}" ~/Library/Keychains/login.keychain-db
+
       - name: Deploy AccountBook
         run: |
           /Users/steven/Documents/GitHub/1_AccountBook/build.sh
