@@ -91,35 +91,42 @@ func createTables() {
 
 // insertDefaults 插入預設資料
 // 原因：首次啟動時提供預設帳戶與分類，避免空白系統
+// 若已有資料則不插入，避免重啟時覆蓋使用者自訂資料
 func insertDefaults() {
-	// 預設帳戶
-	accounts := []struct {
-		name      string
-		sortOrder int
-	}{
-		{"現金", 0},
-		{"信用卡", 1},
-		{"銀行帳戶", 2},
+	// 若已有帳戶則跳過
+	var accountCount int
+	DB.QueryRow("SELECT COUNT(*) FROM accounts").Scan(&accountCount)
+	if accountCount == 0 {
+		accounts := []struct {
+			name      string
+			sortOrder int
+		}{
+			{"現金", 0},
+			{"信用卡", 1},
+			{"銀行帳戶", 2},
+		}
+		for _, a := range accounts {
+			DB.Exec("INSERT INTO accounts (name, balance, sort_order) VALUES (?, 0, ?)", a.name, a.sortOrder)
+		}
 	}
 
-	for _, a := range accounts {
-		DB.Exec("INSERT OR IGNORE INTO accounts (name, balance, sort_order) VALUES (?, 0, ?)", a.name, a.sortOrder)
-	}
-
-	// 預設分類
-	categories := []struct {
-		name      string
-		sortOrder int
-	}{
-		{"飲食", 0},
-		{"交通", 1},
-		{"服飾", 2},
-		{"3C", 3},
-		{"娛樂", 4},
-		{"其他", 5},
-	}
-
-	for _, c := range categories {
-		DB.Exec("INSERT OR IGNORE INTO categories (name, sort_order) VALUES (?, ?)", c.name, c.sortOrder)
+	// 若已有分類則跳過
+	var categoryCount int
+	DB.QueryRow("SELECT COUNT(*) FROM categories").Scan(&categoryCount)
+	if categoryCount == 0 {
+		categories := []struct {
+			name      string
+			sortOrder int
+		}{
+			{"飲食", 0},
+			{"交通", 1},
+			{"服飾", 2},
+			{"3C", 3},
+			{"娛樂", 4},
+			{"其他", 5},
+		}
+		for _, c := range categories {
+			DB.Exec("INSERT INTO categories (name, sort_order) VALUES (?, ?)", c.name, c.sortOrder)
+		}
 	}
 }

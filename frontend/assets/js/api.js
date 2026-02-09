@@ -100,8 +100,11 @@ const API = {
 
     // ========== 統計 ==========
 
-    getStatistics(month) {
-        return this.request(`/statistics?month=${month}`);
+    getStatistics(month, { accountId, categoryId } = {}) {
+        let url = `/statistics?month=${month}`;
+        if (accountId) url += `&account_id=${accountId}`;
+        if (categoryId) url += `&category_id=${categoryId}`;
+        return this.request(url);
     },
 
     getSummary(month) {

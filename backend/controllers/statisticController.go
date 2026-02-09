@@ -3,6 +3,7 @@ package controllers
 import (
 	"accountbook/initializers"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -12,31 +13,47 @@ import (
 func GetStatistics(c *gin.Context) {
 	month := c.Query("month")
 	year := c.Query("year")
+	accountID := c.Query("account_id")
+	categoryID := c.Query("category_id")
 
 	if month == "" && year == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "請提供 month 或 year 參數"})
 		return
 	}
 
-	var dateFilter string
-	var param string
+	// 建立動態 WHERE 條件
+	var conditions []string
+	var params []interface{}
+
 	if month != "" {
-		dateFilter = "strftime('%Y-%m', r.date) = ?"
-		param = month
+		conditions = append(conditions, "strftime('%Y-%m', r.date) = ?")
+		params = append(params, month)
 	} else {
-		dateFilter = "strftime('%Y', r.date) = ?"
-		param = year
+		conditions = append(conditions, "strftime('%Y', r.date) = ?")
+		params = append(params, year)
 	}
+
+	if accountID != "" {
+		conditions = append(conditions, "r.account_id = ?")
+		params = append(params, accountID)
+	}
+
+	if categoryID != "" {
+		conditions = append(conditions, "r.category_id = ?")
+		params = append(params, categoryID)
+	}
+
+	whereClause := strings.Join(conditions, " AND ")
 
 	// 查詢各分類的支出統計
 	rows, err := initializers.DB.Query(`
 		SELECT c.id, c.name, r.type, SUM(r.amount) as total
 		FROM records r
 		JOIN categories c ON r.category_id = c.id
-		WHERE `+dateFilter+`
+		WHERE `+whereClause+`
 		GROUP BY c.id, c.name, r.type
 		ORDER BY total DESC
-	`, param)
+	`, params...)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "查詢統計失敗"})
 		return

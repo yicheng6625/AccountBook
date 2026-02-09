@@ -388,6 +388,25 @@ body {
 }
 
 /* ========== 統計頁 ========== */
+.stat-filters {
+    display: flex;
+    gap: 8px;
+    padding: 8px 16px;
+    background: #f9f9f9;
+    border-bottom: 1px solid #eee;
+}
+
+.stat-filters select {
+    flex: 1;
+    padding: 6px 8px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 13px;
+    background: #fff;
+    color: #333;
+    outline: none;
+}
+
 .stat-summary {
     padding: 16px;
     text-align: center;

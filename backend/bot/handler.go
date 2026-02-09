@@ -91,19 +91,23 @@ func handleMessage(msg *TelegramMessage) {
 		handleRecentRecords(chatID, 0)
 		return
 
+	case text == "/transfer" || text == "/轉帳":
+		startTransfer(chatID)
+		return
+
 	case text == "/cancel" || text == "/取消":
 		DeleteSession(chatID)
 		services.SendMessage(chatID, "已取消")
 		return
 
 	case strings.HasPrefix(text, "/"):
-		services.SendMessage(chatID, "未知指令，可用指令：/start、/new、/recent、/查詢帳戶、/查詢分類")
+		services.SendMessage(chatID, "未知指令，可用指令：/start、/new、/transfer、/recent、/查詢帳戶、/查詢分類")
 		return
 	}
 
 	// 檢查是否有進行中的會話（等待使用者輸入欄位值）
 	session := GetSession(chatID)
-	if session != nil && session.State != StatePreview && session.State != StateIdle {
+	if session != nil && session.State != StatePreview && session.State != StateIdle && session.State != StateTransferPreview {
 		handleFieldInput(chatID, msg.MessageID, session, text)
 		return
 	}
@@ -154,12 +158,21 @@ func handleFieldInput(chatID int64, userMsgID int, session *Session, text string
 
 	case StateEditNote:
 		session.Note = text
+
+	// 轉帳專用狀態
+	case StateTransferAmt:
+		amount, err := parseAmount(text)
+		if err != nil {
+			services.SendMessage(chatID, "❌ 請輸入正確的金額（數字）")
+			return
+		}
+		session.Amount = amount
+
+	case StateTransferNote:
+		session.Note = text
 	}
 
-	// 回到預覽狀態，更新預覽訊息
-	session.State = StatePreview
-
-	// 刪除「請輸入XXX：」提示訊息（原因：使用者已完成輸入，提示不再需要）
+	// 刪除「請輸入XXX：」提示訊息
 	if session.PromptMsgID > 0 {
 		services.DeleteMessage(chatID, session.PromptMsgID)
 		session.PromptMsgID = 0
@@ -168,8 +181,14 @@ func handleFieldInput(chatID int64, userMsgID int, session *Session, text string
 	// 刪除使用者的輸入訊息，保持聊天室整潔
 	services.DeleteMessage(chatID, userMsgID)
 
-	// 更新預覽訊息
-	updatePreview(chatID, session)
+	// 根據模式回到對應的預覽狀態
+	if session.Mode == ModeTransfer {
+		session.State = StateTransferPreview
+		updateTransferPreview(chatID, session)
+	} else {
+		session.State = StatePreview
+		updatePreview(chatID, session)
+	}
 }
 
 // updatePreview 更新預覽訊息的文字與鍵盤
@@ -206,12 +225,17 @@ func handleCallbackQuery(cq *TelegramCallbackQuery) {
 
 	// 若無會話但收到 callback，可能是過期的按鈕
 	if session == nil {
-		// 若是開始新增的指令，建立新會話
 		if data == "new_record" {
 			startNewRecord(chatID)
 			return
 		}
 		services.AnswerCallbackQuery(cq.ID, "此操作已過期，請重新開始")
+		return
+	}
+
+	// 轉帳模式的 callback 處理
+	if session.Mode == ModeTransfer {
+		handleTransferCallback(chatID, cq, session, data)
 		return
 	}
 
@@ -363,6 +387,138 @@ func handleRecentRecords(chatID int64, offset int) {
 	} else {
 		services.SendMessage(chatID, text)
 	}
+}
+
+// === 轉帳功能 ===
+
+// startTransfer 啟動轉帳流程
+func startTransfer(chatID int64) {
+	session := NewTransferSession(chatID)
+
+	text := FormatTransferPreview(session)
+	keyboard := BuildTransferKeyboard(session)
+
+	msgID, err := services.SendMessageWithKeyboard(chatID, text, keyboard)
+	if err != nil {
+		log.Printf("發送轉帳預覽失敗: %v", err)
+		return
+	}
+
+	session.MessageID = msgID
+}
+
+// updateTransferPreview 更新轉帳預覽訊息
+func updateTransferPreview(chatID int64, session *Session) {
+	text := FormatTransferPreview(session)
+	keyboard := BuildTransferKeyboard(session)
+
+	if session.MessageID > 0 {
+		services.EditMessageWithKeyboard(chatID, session.MessageID, text, keyboard)
+	}
+}
+
+// handleTransferCallback 處理轉帳相關的 callback
+func handleTransferCallback(chatID int64, cq *TelegramCallbackQuery, session *Session, data string) {
+	switch {
+	case data == "transfer_edit_from":
+		keyboard := BuildTransferAccountKeyboard("transfer_from_")
+		services.EditMessageWithKeyboard(chatID, session.MessageID,
+			"🏦 選擇轉出帳戶：", keyboard)
+
+	case strings.HasPrefix(data, "transfer_from_"):
+		idStr := strings.TrimPrefix(data, "transfer_from_")
+		id, _ := strconv.Atoi(idStr)
+		session.AccountID = id
+		session.State = StateTransferPreview
+		updateTransferPreview(chatID, session)
+
+	case data == "transfer_edit_to":
+		keyboard := BuildTransferAccountKeyboard("transfer_to_")
+		services.EditMessageWithKeyboard(chatID, session.MessageID,
+			"🏦 選擇轉入帳戶：", keyboard)
+
+	case strings.HasPrefix(data, "transfer_to_"):
+		idStr := strings.TrimPrefix(data, "transfer_to_")
+		id, _ := strconv.Atoi(idStr)
+		session.ToAccountID = id
+		session.State = StateTransferPreview
+		updateTransferPreview(chatID, session)
+
+	case data == "transfer_edit_amount":
+		session.State = StateTransferAmt
+		promptID, _ := services.SendMessageReturningID(chatID, "💰 請輸入轉帳金額：")
+		session.PromptMsgID = promptID
+
+	case data == "transfer_edit_note":
+		session.State = StateTransferNote
+		promptID, _ := services.SendMessageReturningID(chatID, "📌 請輸入備註（輸入「無」可清除）：")
+		session.PromptMsgID = promptID
+
+	case data == "transfer_confirm":
+		handleTransferConfirm(chatID, session)
+
+	case data == "cancel":
+		DeleteSession(chatID)
+		services.EditMessageText(chatID, session.MessageID, "❌ 已取消轉帳")
+	}
+}
+
+// handleTransferConfirm 確認轉帳
+func handleTransferConfirm(chatID int64, session *Session) {
+	if session.Amount <= 0 {
+		updateTransferPreview(chatID, session)
+		services.SendMessage(chatID, "⚠️ 請先填寫轉帳金額")
+		return
+	}
+
+	if session.AccountID == session.ToAccountID {
+		updateTransferPreview(chatID, session)
+		services.SendMessage(chatID, "⚠️ 轉出與轉入帳戶不能相同")
+		return
+	}
+
+	if session.Note == "無" {
+		session.Note = ""
+	}
+
+	tx, err := initializers.DB.Begin()
+	if err != nil {
+		services.SendMessage(chatID, "系統錯誤，請稍後再試")
+		return
+	}
+
+	now := time.Now().Format("2006-01-02 15:04:05")
+
+	// 扣除轉出帳戶餘額
+	_, err = tx.Exec("UPDATE accounts SET balance = balance - ?, updated_at = ? WHERE id = ?",
+		session.Amount, now, session.AccountID)
+	if err != nil {
+		tx.Rollback()
+		services.SendMessage(chatID, "轉帳失敗")
+		return
+	}
+
+	// 增加轉入帳戶餘額
+	_, err = tx.Exec("UPDATE accounts SET balance = balance + ?, updated_at = ? WHERE id = ?",
+		session.Amount, now, session.ToAccountID)
+	if err != nil {
+		tx.Rollback()
+		services.SendMessage(chatID, "轉帳失敗")
+		return
+	}
+
+	if err = tx.Commit(); err != nil {
+		services.SendMessage(chatID, "系統錯誤，請稍後再試")
+		return
+	}
+
+	fromName := resolveAccountName(session.AccountID)
+	toName := resolveAccountName(session.ToAccountID)
+
+	successMsg := FormatTransferSuccess(fromName, toName, session.Amount, session.Note)
+	services.EditMessageText(chatID, session.MessageID, successMsg)
+
+	DeleteSession(chatID)
 }
 
 // handleConfirm 確認送出紀錄

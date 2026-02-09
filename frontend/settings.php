@@ -40,7 +40,7 @@ include __DIR__ . '/components/header.php';
 
             listEl.innerHTML = categories.map(c => `
                 <div class="setting-item" data-id="${c.id}">
-                    <span class="setting-name">${c.id}: ${escapeHtml(c.name)}</span>
+                    <span class="setting-name">${escapeHtml(c.name)}</span>
                     <div class="setting-actions">
                         <button onclick="editCategory(${c.id}, '${escapeAttr(c.name)}')">編輯</button>
                         <button class="btn-del" onclick="deleteCategory(${c.id}, '${escapeAttr(c.name)}')">刪除</button>

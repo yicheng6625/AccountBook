@@ -197,6 +197,94 @@ func resolveCategoryName(id int) string {
 	return name
 }
 
+// === 轉帳格式化 ===
+
+// FormatTransferPreview 格式化轉帳預覽訊息
+func FormatTransferPreview(s *Session) string {
+	fromName := resolveAccountName(s.AccountID)
+	toName := resolveAccountName(s.ToAccountID)
+
+	amountStr := "（未填）"
+	if s.Amount > 0 {
+		amountStr = fmt.Sprintf("%.0f", s.Amount)
+	}
+
+	noteStr := s.Note
+	if noteStr == "" {
+		noteStr = "（無）"
+	}
+
+	return fmt.Sprintf(`🔄 轉帳
+
+🏦 轉出：%s
+🏦 轉入：%s
+💰 金額：%s
+📌 備註：%s
+
+點擊下方按鈕修改欄位，或按「✅ 確認轉帳」`, fromName, toName, amountStr, noteStr)
+}
+
+// BuildTransferKeyboard 建立轉帳預覽的 Inline Keyboard
+func BuildTransferKeyboard(s *Session) services.InlineKeyboardMarkup {
+	row1 := []services.InlineKeyboardButton{
+		{Text: "🏦 轉出帳戶", CallbackData: "transfer_edit_from"},
+		{Text: "🏦 轉入帳戶", CallbackData: "transfer_edit_to"},
+	}
+	row2 := []services.InlineKeyboardButton{
+		{Text: "💰 金額", CallbackData: "transfer_edit_amount"},
+		{Text: "📌 備註", CallbackData: "transfer_edit_note"},
+	}
+	row3 := []services.InlineKeyboardButton{
+		{Text: "✅ 確認轉帳", CallbackData: "transfer_confirm"},
+		{Text: "❌ 取消", CallbackData: "cancel"},
+	}
+
+	return services.InlineKeyboardMarkup{
+		InlineKeyboard: [][]services.InlineKeyboardButton{row1, row2, row3},
+	}
+}
+
+// BuildTransferAccountKeyboard 建立轉帳用帳戶選擇鍵盤
+func BuildTransferAccountKeyboard(prefix string) services.InlineKeyboardMarkup {
+	rows, _ := initializers.DB.Query("SELECT id, name FROM accounts ORDER BY sort_order")
+	defer rows.Close()
+
+	var buttons [][]services.InlineKeyboardButton
+	var row []services.InlineKeyboardButton
+
+	for rows.Next() {
+		var id int
+		var name string
+		rows.Scan(&id, &name)
+		row = append(row, services.InlineKeyboardButton{
+			Text:         name,
+			CallbackData: fmt.Sprintf("%s%d", prefix, id),
+		})
+		if len(row) == 2 {
+			buttons = append(buttons, row)
+			row = nil
+		}
+	}
+	if len(row) > 0 {
+		buttons = append(buttons, row)
+	}
+
+	return services.InlineKeyboardMarkup{InlineKeyboard: buttons}
+}
+
+// FormatTransferSuccess 格式化轉帳成功訊息
+func FormatTransferSuccess(fromName, toName string, amount float64, note string) string {
+	noteStr := note
+	if noteStr == "" {
+		noteStr = "（無）"
+	}
+	return fmt.Sprintf(`✅ 轉帳成功！
+
+🏦 %s ➡️ %s
+💰 %.0f
+📌 %s`, fromName, toName, amount, noteStr)
+}
+
 // FormatRecentRecords 格式化最近紀錄的查詢結果（分頁顯示）
 func FormatRecentRecords(offset, pageSize int) (string, int) {
 	// 先查詢總筆數
@@ -319,6 +407,7 @@ func FormatUsage() string {
 
 指令列表：
 /new - 開始記帳
+/transfer - 帳戶轉帳
 /recent - 查看最近紀錄
 /start - 顯示此說明
 /查詢分類 - 查看所有分類

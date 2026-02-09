@@ -14,6 +14,15 @@ include __DIR__ . '/components/header.php';
     <button id="stat-next">▶</button>
 </div>
 
+<div class="stat-filters">
+    <select id="filter-account">
+        <option value="">全部帳戶</option>
+    </select>
+    <select id="filter-category">
+        <option value="">全部分類</option>
+    </select>
+</div>
+
 <div class="stat-summary">
     <div class="stat-row">
         <div>
@@ -50,6 +59,31 @@ include __DIR__ . '/components/header.php';
             `${currentYear}年${currentMonth}月`;
     }
 
+    // 載入篩選下拉選項
+    async function loadFilters() {
+        try {
+            const accounts = await API.getAccounts();
+            const accountSelect = document.getElementById('filter-account');
+            accounts.forEach(a => {
+                const opt = document.createElement('option');
+                opt.value = a.id;
+                opt.textContent = a.name;
+                accountSelect.appendChild(opt);
+            });
+        } catch (e) {}
+
+        try {
+            const categories = await API.getCategories();
+            const categorySelect = document.getElementById('filter-category');
+            categories.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = c.name;
+                categorySelect.appendChild(opt);
+            });
+        } catch (e) {}
+    }
+
     document.getElementById('stat-prev').addEventListener('click', () => {
         currentMonth--;
         if (currentMonth < 1) { currentMonth = 12; currentYear--; }
@@ -62,12 +96,17 @@ include __DIR__ . '/components/header.php';
         loadStatistics();
     });
 
+    document.getElementById('filter-account').addEventListener('change', loadStatistics);
+    document.getElementById('filter-category').addEventListener('change', loadStatistics);
+
     async function loadStatistics() {
         updateLabel();
         const month = formatMonth();
+        const accountId = document.getElementById('filter-account').value;
+        const categoryId = document.getElementById('filter-category').value;
 
         try {
-            const data = await API.getStatistics(month);
+            const data = await API.getStatistics(month, { accountId, categoryId });
 
             document.getElementById('stat-income').textContent =
                 '$' + Number(data.total_income).toLocaleString();
@@ -89,6 +128,7 @@ include __DIR__ . '/components/header.php';
         }
     }
 
+    loadFilters();
     loadStatistics();
 </script>
 

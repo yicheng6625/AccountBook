@@ -12,7 +12,7 @@ import (
 // GetCategories 取得所有分類列表
 // 原因：前端設定頁、下拉選單、Telegram Bot 都需要分類資料
 func GetCategories(c *gin.Context) {
-	rows, err := initializers.DB.Query("SELECT id, name, sort_order, created_at, updated_at FROM categories ORDER BY sort_order")
+	rows, err := initializers.DB.Query("SELECT id, name, sort_order, created_at, updated_at FROM categories ORDER BY name")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "查詢分類失敗"})
 		return
