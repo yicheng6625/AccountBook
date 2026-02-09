@@ -12,7 +12,7 @@ import (
 // GetAccounts 取得所有帳戶列表
 // 原因：前端帳戶頁與下拉選單需要完整帳戶資料
 func GetAccounts(c *gin.Context) {
-	rows, err := initializers.DB.Query("SELECT id, name, balance, sort_order, created_at, updated_at FROM accounts ORDER BY sort_order")
+	rows, err := initializers.DB.Query("SELECT id, name, balance, sort_order, created_at, updated_at FROM accounts ORDER BY name")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "查詢帳戶失敗"})
 		return
