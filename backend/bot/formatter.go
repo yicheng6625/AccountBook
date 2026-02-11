@@ -216,31 +216,35 @@ func FormatTransferPreview(s *Session) string {
 
 	return fmt.Sprintf(`🔄 轉帳
 
+📅 日期：%s
 🏦 轉出：%s
 🏦 轉入：%s
 💰 金額：%s
 📌 備註：%s
 
-點擊下方按鈕修改欄位，或按「✅ 確認轉帳」`, fromName, toName, amountStr, noteStr)
+點擊下方按鈕修改欄位，或按「✅ 確認轉帳」`, s.Date, fromName, toName, amountStr, noteStr)
 }
 
 // BuildTransferKeyboard 建立轉帳預覽的 Inline Keyboard
 func BuildTransferKeyboard(s *Session) services.InlineKeyboardMarkup {
 	row1 := []services.InlineKeyboardButton{
+		{Text: "📅 日期", CallbackData: "transfer_edit_date"},
+	}
+	row2 := []services.InlineKeyboardButton{
 		{Text: "🏦 轉出帳戶", CallbackData: "transfer_edit_from"},
 		{Text: "🏦 轉入帳戶", CallbackData: "transfer_edit_to"},
 	}
-	row2 := []services.InlineKeyboardButton{
+	row3 := []services.InlineKeyboardButton{
 		{Text: "💰 金額", CallbackData: "transfer_edit_amount"},
 		{Text: "📌 備註", CallbackData: "transfer_edit_note"},
 	}
-	row3 := []services.InlineKeyboardButton{
+	row4 := []services.InlineKeyboardButton{
 		{Text: "✅ 確認轉帳", CallbackData: "transfer_confirm"},
 		{Text: "❌ 取消", CallbackData: "cancel"},
 	}
 
 	return services.InlineKeyboardMarkup{
-		InlineKeyboard: [][]services.InlineKeyboardButton{row1, row2, row3},
+		InlineKeyboard: [][]services.InlineKeyboardButton{row1, row2, row3, row4},
 	}
 }
 

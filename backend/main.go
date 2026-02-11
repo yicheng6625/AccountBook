@@ -53,6 +53,9 @@ func main() {
 		api.PUT("/categories/:id", controllers.UpdateCategory)
 		api.DELETE("/categories/:id", controllers.DeleteCategory)
 
+		// 轉帳路由
+		api.POST("/transfer", controllers.CreateTransfer)
+
 		// 統計相關路由
 		api.GET("/statistics", controllers.GetStatistics)
 		api.GET("/statistics/summary", controllers.GetSummary)

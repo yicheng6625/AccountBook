@@ -4,6 +4,7 @@ import (
 	"accountbook/initializers"
 	"accountbook/services"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -160,6 +161,14 @@ func handleFieldInput(chatID int64, userMsgID int, session *Session, text string
 		session.Note = text
 
 	// 轉帳專用狀態
+	case StateTransferDate:
+		date, err := parseDate(text)
+		if err != nil {
+			services.SendMessage(chatID, "❌ 日期格式錯誤，請輸入如：今天、昨天、2026/01/15、01/15")
+			return
+		}
+		session.Date = date
+
 	case StateTransferAmt:
 		amount, err := parseAmount(text)
 		if err != nil {
@@ -420,6 +429,19 @@ func updateTransferPreview(chatID int64, session *Session) {
 // handleTransferCallback 處理轉帳相關的 callback
 func handleTransferCallback(chatID int64, cq *TelegramCallbackQuery, session *Session, data string) {
 	switch {
+	case data == "transfer_edit_date":
+		keyboard := BuildDateKeyboard()
+		services.EditMessageWithKeyboard(chatID, session.MessageID,
+			"📅 選擇日期，或直接輸入（如：2026/01/15、01/15）", keyboard)
+		session.State = StateTransferDate
+
+	case strings.HasPrefix(data, "set_date_") && session.Mode == ModeTransfer:
+		offsetStr := strings.TrimPrefix(data, "set_date_")
+		offset, _ := strconv.Atoi(offsetStr)
+		session.Date = time.Now().AddDate(0, 0, offset).Format("2006-01-02")
+		session.State = StateTransferPreview
+		updateTransferPreview(chatID, session)
+
 	case data == "transfer_edit_from":
 		keyboard := BuildTransferAccountKeyboard("transfer_from_")
 		services.EditMessageWithKeyboard(chatID, session.MessageID,
@@ -481,6 +503,10 @@ func handleTransferConfirm(chatID int64, session *Session) {
 		session.Note = ""
 	}
 
+	fromName := resolveAccountName(session.AccountID)
+	toName := resolveAccountName(session.ToAccountID)
+	categoryID := getTransferCategoryID()
+
 	tx, err := initializers.DB.Begin()
 	if err != nil {
 		services.SendMessage(chatID, "系統錯誤，請稍後再試")
@@ -507,18 +533,54 @@ func handleTransferConfirm(chatID int64, session *Session) {
 		return
 	}
 
+	// 建立轉出紀錄（支出）
+	outItem := fmt.Sprintf("轉帳至 %s", toName)
+	_, err = tx.Exec(
+		"INSERT INTO records (date, account_id, type, amount, item, category_id, note, created_at, updated_at) VALUES (?, ?, '支出', ?, ?, ?, ?, ?, ?)",
+		session.Date, session.AccountID, session.Amount, outItem, categoryID, session.Note, now, now,
+	)
+	if err != nil {
+		tx.Rollback()
+		services.SendMessage(chatID, "轉帳失敗")
+		return
+	}
+
+	// 建立轉入紀錄（收入）
+	inItem := fmt.Sprintf("從 %s 轉入", fromName)
+	_, err = tx.Exec(
+		"INSERT INTO records (date, account_id, type, amount, item, category_id, note, created_at, updated_at) VALUES (?, ?, '收入', ?, ?, ?, ?, ?, ?)",
+		session.Date, session.ToAccountID, session.Amount, inItem, categoryID, session.Note, now, now,
+	)
+	if err != nil {
+		tx.Rollback()
+		services.SendMessage(chatID, "轉帳失敗")
+		return
+	}
+
 	if err = tx.Commit(); err != nil {
 		services.SendMessage(chatID, "系統錯誤，請稍後再試")
 		return
 	}
 
-	fromName := resolveAccountName(session.AccountID)
-	toName := resolveAccountName(session.ToAccountID)
-
 	successMsg := FormatTransferSuccess(fromName, toName, session.Amount, session.Note)
 	services.EditMessageText(chatID, session.MessageID, successMsg)
 
 	DeleteSession(chatID)
+}
+
+// getTransferCategoryID 取得或建立「轉帳」分類的 ID
+func getTransferCategoryID() int {
+	var id int
+	err := initializers.DB.QueryRow("SELECT id FROM categories WHERE name = '轉帳'").Scan(&id)
+	if err == nil {
+		return id
+	}
+	result, err := initializers.DB.Exec("INSERT INTO categories (name, sort_order) VALUES ('轉帳', 999)")
+	if err != nil {
+		return 1
+	}
+	newID, _ := result.LastInsertId()
+	return int(newID)
 }
 
 // handleConfirm 確認送出紀錄

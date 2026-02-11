@@ -4,6 +4,11 @@ $currentPage = 'add';
 include __DIR__ . '/components/header.php';
 ?>
 
+<div class="page-toggle">
+    <a href="/record_add.php" class="toggle-item active">記帳</a>
+    <a href="/transfer_add.php" class="toggle-item">轉帳</a>
+</div>
+
 <form id="add-form">
     <div class="form-group">
         <label>日期</label>

@@ -20,6 +20,7 @@ const (
 
 	// 轉帳專用狀態
 	StateTransferPreview SessionState = "transfer_preview" // 轉帳預覽
+	StateTransferDate    SessionState = "transfer_date"    // 等待輸入轉帳日期
 	StateTransferAmt     SessionState = "transfer_amount"  // 等待輸入轉帳金額
 	StateTransferNote    SessionState = "transfer_note"    // 等待輸入轉帳備註
 )
