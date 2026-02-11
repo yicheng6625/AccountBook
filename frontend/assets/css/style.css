@@ -243,15 +243,11 @@ body {
     overflow: hidden;
 }
 
-.page-toggle .toggle-item {
+.page-toggle a.toggle-item {
     flex: 1;
+    display: block;
     text-align: center;
     padding: 8px 0;
-    font-size: 14px;
-    text-decoration: none;
-    color: #666;
-    background: #fff;
-    transition: background 0.2s, color 0.2s;
 }
 
 .page-toggle .toggle-item.active {
