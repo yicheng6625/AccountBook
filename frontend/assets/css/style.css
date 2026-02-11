@@ -234,6 +234,31 @@ body {
     font-size: 13px;
 }
 
+/* ========== 頁面切換 ========== */
+.page-toggle {
+    display: flex;
+    margin: 12px 16px 0;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.page-toggle .toggle-item {
+    flex: 1;
+    text-align: center;
+    padding: 8px 0;
+    font-size: 14px;
+    text-decoration: none;
+    color: #666;
+    background: #fff;
+    transition: background 0.2s, color 0.2s;
+}
+
+.page-toggle .toggle-item.active {
+    background: #4A90D9;
+    color: #fff;
+}
+
 /* ========== 表單 ========== */
 .form-group {
     padding: 10px 16px;

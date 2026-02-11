@@ -98,6 +98,12 @@ const API = {
         return this.request(`/categories/${id}`, { method: 'DELETE' });
     },
 
+    // ========== 轉帳 ==========
+
+    createTransfer(data) {
+        return this.request('/transfer', { method: 'POST', body: data });
+    },
+
     // ========== 統計 ==========
 
     getStatistics(month, { accountId, categoryId } = {}) {
